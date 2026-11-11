@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Kafka File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Sofia+Sans+Extra+Condensed:wght@600;800&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: an office file on ledger paper. Three dark WebGL windows cut into the page,
+   each a scene from one book; between them, ink drawings and a register of the works. Left-aligned. */
+:root{
+  color-scheme: light;
+  --paper:#D5D9CC;        /* ledger green-grey */
+  --paper-deep:#C2C8B6;
+  --ink:#16181D;
+  --ink-soft:#474C52;
+  --stamp:#56338C;        /* copying-pencil violet */
+  --night:#0C0F12;        /* behind the canvases */
+  --chalk:#ECEEE4;        /* type on the canvases */
+  --display:"Sofia Sans Extra Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  --body:"Literata",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:1.0625rem;line-height:1.62}
+h1,h2,h3{font-family:var(--display);font-weight:800;line-height:.9;margin:0;text-wrap:balance}
+p{margin:0}
+a{color:var(--stamp)}
+:focus-visible{outline:3px solid var(--stamp);outline-offset:3px}
+canvas{display:block;width:100%;height:100%;background:var(--night)}
+canvas.nogl{background:radial-gradient(circle at 50% 45%,#3b4136 0,#0c0f12 70%)}
+
+.wrap{max-width:1120px;margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+
+/* hero */
+.hero{position:relative;background:var(--night);color:var(--chalk)}
+.hero-stage{height:clamp(440px,74vh,780px)}
+.hero-text{position:absolute;left:0;right:0;bottom:0;padding-bottom:clamp(20px,4vw,44px);
+  background:linear-gradient(to top,rgba(8,10,12,.92),rgba(8,10,12,0));pointer-events:none}
+.hero h1{font-size:clamp(5.5rem,21vw,17rem);letter-spacing:-.01em;margin-left:-.04em}
+.hero-sub{max-width:44ch;font-size:clamp(1rem,1.6vw,1.2rem);margin-top:.6rem}
+.motion{position:absolute;top:16px;right:clamp(16px,4vw,40px);font:600 1.05rem/1 var(--display);letter-spacing:.03em;
+  color:var(--chalk);background:rgba(12,15,18,.6);border:1px solid rgba(236,238,228,.5);padding:.55em .9em;cursor:pointer}
+.motion:hover{background:rgba(236,238,228,.16)}
+
+/* book sections */
+.book{padding:clamp(48px,8vw,104px) 0 0}
+.book h2{font-size:clamp(3.4rem,9vw,7.5rem)}
+.book .english{font-family:var(--body);font-style:italic;font-size:1.15rem;color:var(--ink-soft);margin-top:.5rem}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:clamp(24px,5vw,72px);margin-top:clamp(24px,4vw,44px)}
+.cols.flip{grid-template-columns:minmax(0,6fr) minmax(0,5fr)}
+.cols.flip .quote{order:2}
+.quote{border-left:4px solid var(--stamp);padding-left:1.1rem;align-self:start}
+.quote .de{font-style:italic;font-size:clamp(1.25rem,2.2vw,1.6rem);line-height:1.38}
+.quote .en{margin-top:.8rem;color:var(--ink-soft)}
+.quote .src{margin-top:.8rem;font-size:.9rem;color:var(--ink-soft)}
+.prose{display:grid;gap:1em;max-width:62ch}
+.stage{margin-top:clamp(24px,4vw,44px);aspect-ratio:16/8;min-height:300px;max-height:620px;width:100%;background:var(--night);touch-action:pan-y}
+.caption{font-style:italic;font-size:.95rem;color:var(--ink-soft);margin-top:.6rem;max-width:70ch}
+
+/* register */
+.register{margin-top:clamp(64px,10vw,128px);background:var(--paper-deep);padding:clamp(40px,7vw,88px) 0}
+.register h2{font-size:clamp(3rem,7.5vw,6rem)}
+.register .lead{max-width:60ch;margin-top:1rem}
+.chart-box{overflow-x:auto;margin-top:2rem}
+.chart-box svg{display:block;min-width:720px;width:100%;height:auto}
+.chart-box text{font-family:var(--body);fill:var(--ink)}
+.chart-box .num{font-variant-numeric:tabular-nums}
+.key{display:flex;flex-wrap:wrap;gap:.5rem 2rem;margin-top:1rem;font-size:.95rem}
+.key span::before{content:"";display:inline-block;width:1.6em;height:.28em;margin-right:.5em;vertical-align:middle;background:var(--ink)}
+.key .post::before{background:var(--stamp)}
+.stamp{float:right;width:clamp(120px,16vw,180px);margin:0 0 1rem 1.5rem;transform:rotate(-11deg);opacity:.85}
+
+/* shorter works */
+.shorts{padding:clamp(56px,9vw,112px) 0}
+.shorts h2{font-size:clamp(3rem,7.5vw,6rem)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:clamp(28px,4vw,48px) clamp(24px,4vw,56px);margin-top:2.5rem}
+.short svg{width:132px;height:132px;display:block}
+.short svg *{vector-effect:non-scaling-stroke}
+.short h3{font-size:2.3rem;margin-top:.9rem}
+.short .en{font-style:italic;color:var(--ink-soft)}
+.short p.d{margin-top:.5rem}
+.ink{fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ink-fill{fill:var(--ink)}
+.vio{fill:none;stroke:var(--stamp);stroke-width:2.6;stroke-linecap:round}
+
+footer{border-top:2px solid var(--ink);padding:1.5rem 0 3rem;font-size:.92rem;color:var(--ink-soft)}
+footer p{max-width:75ch}
+
+@media (max-width:760px){
+  .cols,.cols.flip{grid-template-columns:1fr}
+  .cols.flip .quote{order:0}
+  .stage{aspect-ratio:4/3}
+  .stamp{float:none;margin:0 0 1rem}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-stage"><canvas id="corridor" aria-label="Animation: an endless office corridor lined with doors, drifting forward toward a small light that never gets closer"></canvas></div>
+  <button class="motion" id="motion" type="button">Pause motion</button>
+  <div class="hero-text"><div class="wrap">
+    <h1>Franz Kafka</h1>
+    <p class="hero-sub">Prague, 1883 to 1924. He spent his days assessing industrial accidents for an insurance institute and his nights writing books in which the office never ends.</p>
+  </div></div>
+</header>
+
+<main>
+
+<section class="book wrap" id="process">
+  <h2>Der Process</h2>
+  <p class="english">The Trial, written 1914 to 1915, published 1925</p>
+  <div class="cols">
+    <div class="quote">
+      <p class="de" lang="de">Jemand mußte Josef K. verleumdet haben, denn ohne daß er etwas Böses getan hätte, wurde er eines Morgens verhaftet.</p>
+      <p class="en">Someone must have slandered Josef K., for one morning, without having done anything wrong, he was arrested.</p>
+      <p class="src">Opening sentence, first edition of 1925</p>
+    </div>
+    <div class="prose">
+      <p>Josef K., a senior bank clerk, is arrested on the morning of his thirtieth birthday. Nobody tells him the charge. He is free to go to work, and he does, while his case climbs through a court that keeps its offices in the attics of tenement houses.</p>
+      <p>The corridor above is that court as the book describes it: door after door, bad air, lamps, and far ahead a light. In the parable a priest tells K., a man waits his whole life at the door of the Law. As he dies the doorkeeper says the entrance was meant only for him, and shuts it.</p>
+      <p>Move the pointer over the corridor to lean and look around. You will not arrive.</p>
+    </div>
+  </div>
+</section>
+
+<section class="book wrap" id="verwandlung">
+  <h2>Die Verwandlung</h2>
+  <p class="english">The Metamorphosis, written 1912, published 1915</p>
+  <div class="stage"><canvas id="beetle" aria-label="Animation: a brown beetle walks across striped wallpaper and runs when the pointer comes near"></canvas></div>
+  <p class="caption">Kafka asked his publisher that the insect never be drawn, not even from a distance. This one keeps its own distance: bring the pointer close and it runs.</p>
+  <div class="cols flip">
+    <div class="quote">
+      <p class="de" lang="de">Als Gregor Samsa eines Morgens aus unruhigen Träumen erwachte, fand er sich in seinem Bett zu einem ungeheueren Ungeziefer verwandelt.</p>
+      <p class="en">When Gregor Samsa woke one morning from troubled dreams, he found himself changed in his bed into a monstrous vermin.</p>
+      <p class="src">Opening sentence, first edition of 1915</p>
+    </div>
+    <div class="prose">
+      <p>Gregor is a travelling salesman who supports his parents and sister. His first worry on waking with an armoured back and too many legs is that he has missed the five o'clock train.</p>
+      <p>The story never leaves the flat. Gregor learns to walk on the walls and ceiling of his room; the family learns to live without his wages. His father drives him back from the living room with apples, and one lodges in his back and stays there.</p>
+    </div>
+  </div>
+</section>
+
+<section class="book wrap" id="schloss">
+  <h2>Das Schloss</h2>
+  <p class="english">The Castle, written 1922, published 1926</p>
+  <div class="stage"><canvas id="castle" aria-label="Animation: snow falls over village rooftops; on the hill behind them a castle appears and disappears in drifting fog"></canvas></div>
+  <p class="caption">The village rooftops pass as you walk. The castle stays the same size. Move the pointer left or right to turn the wind.</p>
+  <div class="cols">
+    <div class="quote">
+      <p class="de" lang="de">Es war spät abends, als K. ankam. Das Dorf lag in tiefem Schnee.</p>
+      <p class="en">It was late in the evening when K. arrived. The village lay deep in snow.</p>
+      <p class="src">Opening sentences, first edition of 1926</p>
+    </div>
+    <div class="prose">
+      <p>K. says he has been summoned as a land surveyor. The village has no work for a surveyor, and the castle that supposedly hired him can be telephoned but not reached. The road toward it bends away each time it seems to approach.</p>
+      <p>The castle itself, when the fog lets him see it, is no fortress: a sprawl of low buildings with a single tower. Kafka stopped writing the novel in 1922. It breaks off in the middle of a sentence.</p>
+    </div>
+  </div>
+</section>
+
+<section class="register" id="register">
+  <div class="wrap">
+    <svg class="stamp" viewBox="0 0 200 200" role="img" aria-label="Violet rubber stamp reading: nicht verbrannt, not burned">
+      <defs><path id="arc" d="M100 100 m-74 0 a74 74 0 1 1 148 0 a74 74 0 1 1 -148 0"/></defs>
+      <circle cx="100" cy="100" r="94" fill="none" stroke="var(--stamp)" stroke-width="5"/>
+      <circle cx="100" cy="100" r="58" fill="none" stroke="var(--stamp)" stroke-width="2.5"/>
+      <text font-family="Sofia Sans Extra Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="25" letter-spacing="3.2" fill="var(--stamp)"><textPath href="#arc" startOffset="2%">Nachlass Franz Kafka, Prag 1924, nicht verbrannt</textPath></text>
+      <text x="100" y="95" text-anchor="middle" font-family="Sofia Sans Extra Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="34" fill="var(--stamp)">nicht</text>
+      <text x="100" y="126" text-anchor="middle" font-family="Sofia Sans Extra Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="34" fill="var(--stamp)">verbrannt</text>
+    </svg>
+    <h2>Written, then published</h2>
+    <p class="lead">Kafka published a handful of stories in his lifetime and left instructions that everything else be burned unread. His friend Max Brod refused. Each line below runs from the year a work was written to the year it reached print; the violet ones crossed the line of his death.</p>
+    <div class="chart-box" id="chart" tabindex="0" aria-label="Chart of twelve works by year written and year published"></div>
+    <div class="key"><span>Published in his lifetime</span><span class="post">Published after his death</span></div>
+  </div>
+</section>
+
+<section class="shorts wrap" id="stories">
+  <h2>Six shorter works</h2>
+  <div class="grid">
+
+    <article class="short">
+      <svg viewBox="0 0 120 120" role="img" aria-label="Ink drawing of a bridge over a river with a figure falling from it">
+        <path class="ink" d="M6 46H114M6 56H114M14 56V84M46 56V84M78 56V84M108 56V84M14 84Q30 60 46 84M46 84Q62 60 78 84M78 84Q93 60 108 84"/>
+        <path class="ink" d="M6 98q9-6 18 0t18 0 18 0 18 0 18 0 18 0M12 110q9-6 18 0t18 0 18 0 18 0 18 0"/>
+        <path class="vio" d="M62 46V30" stroke-dasharray="2 6"/><circle cx="62" cy="68" r="4" fill="var(--stamp)"/>
+        <path class="vio" d="M62 50V60" stroke-dasharray="2 5"/>
+      </svg>
+      <h3>Das Urteil</h3><p class="en">The Judgment, 1913</p>
+      <p class="d">Written in a single sitting through the night of 22 September 1912. A father sentences his son to death by drowning, and the son runs to the bridge to carry it out.</p>
+    </article>
+
+    <article class="short">
+      <svg viewBox="0 0 120 120" role="img" aria-label="Ink drawing of a harrow of needles above a bed">
+        <path class="ink" d="M10 20H110V32H10ZM60 8V20"/>
+        <path class="ink" d="M18 32V58M27 32V50M36 32V62M45 32V52M54 32V60M63 32V50M72 32V63M81 32V53M90 32V59M99 32V51"/>
+        <path class="vio" d="M16 78q6-7 12 0t12 0 12 0 12 0 12 0 12 0 12 0"/>
+        <path class="ink" d="M8 92H112V102H8ZM18 102V112M102 102V112"/>
+      </svg>
+      <h3>In der Strafkolonie</h3><p class="en">In the Penal Colony, 1919</p>
+      <p class="d">An officer demonstrates a machine whose harrow of needles writes the broken law into the body of the condemned man, slowly, over twelve hours.</p>
+    </article>
+
+    <article class="short">
+      <svg viewBox="0 0 120 120" role="img" aria-label="Ink drawing of a ringing night bell in falling snow">
+        <path class="ink" d="M60 14V24M38 78C38 44 44 24 60 24S82 44 82 78ZM30 78H90"/>
+        <circle class="ink-fill" cx="60" cy="88" r="6"/>
+        <path class="vio" d="M24 40q-8 14 0 28M96 40q8 14 0 28M12 32q-10 22 0 44M108 32q10 22 0 44"/>
+        <g class="ink-fill"><circle cx="20" cy="100" r="2"/><circle cx="42" cy="108" r="2"/><circle cx="80" cy="104" r="2"/><circle cx="100" cy="96" r="2"/><circle cx="60" cy="112" r="2"/><circle cx="30" cy="14" r="2"/><circle cx="92" cy="18" r="2"/></g>
+      </svg>
+      <h3>Ein Landarzt</h3><p class="en">A Country Doctor, 1920</p>
+      <p class="d">The night bell rings and a doctor is carried ten miles through a blizzard by horses that came out of his own pigsty. He cannot heal the patient and cannot get home.</p>
+    </article>
+
+    <article class="short">
+      <svg viewBox="0 0 120 120" role="img" aria-label="Ink drawing of a barred cage with straw and a clock">
+        <path class="ink" d="M12 24H108V100H12ZM24 24V100M36 24V100M48 24V100M60 24V100M72 24V100M84 24V100M96 24V100M6 100H114"/>
+        <path class="ink" d="M16 96l10-8M30 97l12-6M52 96l-8-9M70 97l12-7M92 96l-9-8M100 97l6-6"/>
+        <circle cx="60" cy="14" r="9" fill="var(--paper)" stroke="var(--stamp)" stroke-width="2.6"/><path class="vio" d="M60 9V14L64 16"/>
+      </svg>
+      <h3>Ein Hungerkünstler</h3><p class="en">A Hunger Artist, 1922</p>
+      <p class="d">A man fasts in a cage for paying crowds, forty days at a stretch. The crowds drift away. He goes on fasting until nobody is counting, and a panther takes over the cage.</p>
+    </article>
+
+    <article class="short">
+      <svg viewBox="0 0 120 120" role="img" aria-label="Ink drawing of a burrow: branching tunnels under the ground leading to a round chamber">
+        <path class="ink" d="M6 22H50M62 22H114M34 22v-6M40 22v-9M78 22v-7M96 22v-5"/>
+        <path class="ink" d="M56 22C56 40 30 38 30 54S60 62 62 76M30 54C16 58 14 74 22 84M62 76C80 70 98 56 96 42M62 76C56 88 44 96 34 104"/>
+        <circle class="ink" cx="72" cy="92" r="14"/><path class="ink" d="M62 76L66 80"/>
+        <path class="vio" d="M100 84q4-4 8 0M98 94q6-5 12 0M100 104q4-4 8 0"/>
+      </svg>
+      <h3>Der Bau</h3><p class="en">The Burrow, 1931</p>
+      <p class="d">An animal has built itself a perfect fortress of tunnels. Then it hears a faint whistling in the walls that it can neither locate nor stop hearing. Unfinished.</p>
+    </article>
+
+    <article class="short">
+      <svg viewBox="0 0 120 120" role="img" aria-label="Ink drawing of a mouse with a line of sound leaving its mouth">
+        <path class="ink" d="M30 88C24 62 44 44 66 48C86 52 96 70 92 88Z"/>
+        <circle class="ink" cx="44" cy="46" r="10"/><circle class="ink" cx="66" cy="40" r="10"/>
+        <circle class="ink-fill" cx="42" cy="68" r="2.6"/><path class="ink" d="M30 80l-10 2M30 84l-9 6"/>
+        <path class="ink" d="M92 88C108 90 112 100 100 106S80 104 76 110"/>
+        <path class="vio" d="M18 70C10 56 16 40 8 26"/>
+      </svg>
+      <h3>Josefine, die Sängerin</h3><p class="en">Josephine the Singer, 1924</p>
+      <p class="d">The mouse folk gather in silence to hear Josephine sing, though her singing may be no different from the piping every mouse does. The last story Kafka finished.</p>
+    </article>
+
+  </div>
+</section>
+
+</main>
+
+<footer><div class="wrap">
+  <p>Every picture on this page is drawn in code: three WebGL fragment shaders, inline SVG and CSS. No image files are used. German quotations follow the first editions; the English beneath them is translated for this page.</p>
+</div></footer>
+
+<script id="fs-corridor" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 R; uniform float T; uniform vec2 M;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;
+  vec2 m=M-.5;
+  vec3 ro=vec3(m.x*.8,-.2+m.y*.3,0.);
+  vec3 rd=normalize(vec3(uv.x-m.x*.2+.0001,uv.y-m.y*.1+.0401,1.15));
+  float tx=((rd.x>0.?1.:-1.)-ro.x)/rd.x;
+  float ty=((rd.y>0.?1.:-1.)-ro.y)/rd.y;
+  float t=min(tx,ty);
+  vec3 p=ro+rd*t;
+  float z=p.z+T*.55;
+  float zc=mod(z,3.)-1.5;
+  float d2=p.x*p.x+(1.-p.y)*(1.-p.y)+zc*zc;
+  float light=1.5/(1.+1.1*d2);
+  vec3 col=vec3(0.); vec3 em=vec3(0.);
+  if(tx<ty){
+    float sd=rd.x>0.?1.:0.;
+    float zz=z+sd*1.5+1.5;
+    float dz=mod(zz,3.)-1.5; float id=floor(zz/3.);
+    float y=p.y;
+    col=y<-.4?vec3(.15,.21,.16):vec3(.42,.46,.36);
+    col=mix(col,vec3(.07,.09,.07),smoothstep(.02,.0,abs(y+.4)));
+    float fr=max(abs(dz)-.5,y-.5);
+    float dr=max(abs(dz)-.42,y-.42);
+    if(fr<0.) col=vec3(.09,.075,.05);
+    if(dr<0.){
+      col=vec3(.21,.13,.075);
+      float ax=abs(dz);
+      float p1=max(abs(ax-.2)-.13,abs(y-.05)-.27);
+      float p2=max(abs(ax-.2)-.13,abs(y+.62)-.25);
+      col*=.7+.3*smoothstep(0.,.025,min(abs(p1),abs(p2)));
+      col=mix(col,vec3(.85,.68,.3),smoothstep(.045,.03,length(vec2(dz-.33,y+.28))));
+      col=mix(col,vec3(.75,.72,.6),step(max(abs(dz)-.07,abs(y-.3)-.035),0.)*.8);
+    }
+    float lit=step(.7,hash(vec2(id,sd+3.)));
+    float under=smoothstep(.07,.0,y+1.)*smoothstep(.46,.3,abs(dz));
+    em+=lit*under*vec3(1.,.72,.3)*1.6;
+  }else if(rd.y<0.){
+    float ch=mod(floor(p.x*2.)+floor(z*2.),2.);
+    col=mix(vec3(.1,.11,.1),vec3(.3,.31,.26),ch);
+    col+=light*light*.12;
+    float sd=p.x>0.?1.:0.;
+    float zz=z+sd*1.5+1.5; float dz=mod(zz,3.)-1.5; float id=floor(zz/3.);
+    float lit=step(.7,hash(vec2(id,sd+3.)));
+    em+=lit*vec3(1.,.72,.3)*.5*smoothstep(.5,.0,abs(dz))*smoothstep(.45,1.,abs(p.x));
+  }else{
+    col=vec3(.3,.32,.27);
+    float ld=length(vec2(p.x,zc));
+    em+=vec3(1.,.86,.56)*(smoothstep(.2,.16,ld)*2.+.25*exp(-ld*ld*6.));
+  }
+  col=col*(.1+light)+em;
+  col=mix(col,vec3(.02,.03,.03),1.-exp(-t*.115));
+  vec2 vp=uv-vec2(m.x*.2,m.y*.1-.04);
+  col+=vec3(.95,.86,.6)*(exp(-dot(vp,vp)*1400.)*.9+exp(-dot(vp,vp)*90.)*.08);
+  col*=1.-.35*dot(uv,uv);
+  col+=(hash(gl_FragCoord.xy+fract(T)*91.)-.5)*.035;
+  gl_FragColor=vec4(pow(max(col,0.),vec3(.9)),1.);
+}
+</script>
+
+<script id="fs-beetle" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 R; uniform float T; uniform vec2 P; uniform float A; uniform float W;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float seg(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}
+float ell(vec2 p,vec2 r){return (length(p/r)-1.)*min(r.x,r.y);}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float body(vec2 q){
+  float d=ell(q-vec2(-.25,0.),vec2(.5,.34));
+  d=smin(d,ell(q-vec2(.3,0.),vec2(.2,.25)),.06);
+  d=smin(d,length(q-vec2(.54,0.))-.12,.04);
+  return d;
+}
+float legs(vec2 q){
+  float d=1e3;
+  for(int i=0;i<3;i++){
+    float fi=float(i);
+    for(int s=0;s<2;s++){
+      float sg=1.-2.*float(s);
+      float ph=W+3.14159*(fi+float(s));
+      vec2 a=vec2(.34-.27*fi,sg*.18);
+      vec2 f=vec2(.62-.5*fi+.13*sin(ph),sg*.74);
+      vec2 k=mix(a,f,.5)+vec2(.06-.06*fi,sg*.16);
+      d=min(d,min(seg(q,a,k),seg(q,k,f)));
+    }
+  }
+  for(int s=0;s<2;s++){
+    float sg=1.-2.*float(s);
+    vec2 a=vec2(.62,sg*.05);
+    vec2 b=vec2(.82,sg*(.2+.03*sin(T*3.+sg)));
+    vec2 c=vec2(.98,sg*(.16+.05*sin(T*2.3+sg*2.)));
+    d=min(d,min(seg(q,a,b),seg(q,b,c))+.012);
+  }
+  return d-.028;
+}
+vec2 loc(vec2 uv,float S){
+  vec2 d=(uv-P)/S; float c=cos(A),s=sin(A);
+  return vec2(c*d.x+s*d.y,-s*d.x+c*d.y);
+}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;
+  float S=.15;
+  // wallpaper
+  float sx=uv.x*9.;
+  float st=smoothstep(.2,.22,abs(fract(sx)-.5));
+  vec3 col=mix(vec3(.52,.55,.42),vec3(.6,.62,.5),st);
+  vec2 c=fract(vec2(sx+.5,uv.y*9.+floor(sx+.5)*.5))-.5;
+  col=mix(col,vec3(.42,.36,.26),smoothstep(.13,.11,abs(c.x)*1.6+abs(c.y))*.7);
+  col*=.93+.07*hash(floor(gl_FragCoord.xy*.5));
+  // wainscot
+  float wy=-.4;
+  if(uv.y<wy){col=vec3(.2,.13,.08)*(.8+.2*smoothstep(.0,.02,abs(fract(uv.x*5.)-.5)));}
+  col=mix(col,vec3(.1,.07,.04),smoothstep(.012,.0,abs(uv.y-wy)));
+  // morning light through a window
+  vec2 l=vec2(uv.x-uv.y*.4-.1-.06*sin(T*.07),uv.y-.05);
+  float win=smoothstep(.34,.3,abs(l.x))*smoothstep(.34,.3,abs(l.y));
+  win*=smoothstep(.012,.03,abs(l.x))*smoothstep(.012,.03,abs(l.y));
+  col*=.5+.75*win;
+  // beetle
+  float aa=2.5/(R.y*S);
+  vec2 qs=loc(uv-vec2(.014,-.02),S);
+  float sh=min(body(qs),legs(qs));
+  col*=1.-.5*smoothstep(.1,-.03,sh);
+  vec2 q=loc(uv,S);
+  col=mix(col,vec3(.06,.04,.03),smoothstep(aa,-aa,legs(q)));
+  float db=body(q);
+  vec3 bc=vec3(.27,.14,.07);
+  float rid=sin((q.x+q.y*q.y*.7)*40.);
+  if(q.x<.1) bc*=.72+.28*smoothstep(-.3,.3,rid);
+  bc=mix(bc,vec3(.13,.07,.04),smoothstep(.12,.3,q.x));
+  bc*=.45+.55*smoothstep(0.,-.16,db);
+  bc+=vec3(.5,.42,.3)*exp(-dot(q-vec2(-.2,.12),q-vec2(-.2,.12))*14.)*.5;
+  if(q.x<.1) bc*=.4+.6*smoothstep(.0,.014,abs(q.y));
+  col=mix(col,bc,smoothstep(aa,-aa,db));
+  col*=1.-.3*dot(uv,uv);
+  col+=(hash(gl_FragCoord.xy+fract(T)*57.)-.5)*.03;
+  gl_FragColor=vec4(max(col,0.),1.);
+}
+</script>
+
+<script id="fs-castle" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 R; uniform float T; uniform vec2 M;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}
+float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n(p);p*=2.03;a*=.5;}return s;}
+float box(vec2 p,vec2 c,vec2 b){vec2 d=abs(p-c)-b;return max(d.x,d.y);}
+float snow(vec2 uv,float sc,float sp,float wind){
+  uv*=sc; uv.y+=T*sp; uv.x+=sin(uv.y*.6+sc)*.35-T*wind*sp*.6;
+  vec2 g=floor(uv),f=fract(uv);
+  vec2 o=vec2(hash(g),hash(g+7.3))*.6+.2;
+  return smoothstep(.09,.0,length(f-o))*hash(g+3.1);
+}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;
+  float aa=1.5/R.y;
+  float wind=(M.x-.5)*2.4;
+  vec3 sky=mix(vec3(.17,.2,.25),vec3(.05,.065,.09),smoothstep(-.25,.5,uv.y));
+  vec3 col=sky;
+  // hill and castle: low buildings and one tower
+  float hill=-.1+.2*exp(-uv.x*uv.x*2.2)+.015*n(vec2(uv.x*9.,1.));
+  float c=1e3;
+  c=min(c,box(uv,vec2(-.02,.12),vec2(.16,.05)));
+  c=min(c,box(uv,vec2(-.14,.13),vec2(.05,.07)));
+  c=min(c,box(uv,vec2(.1,.13),vec2(.06,.06)));
+  c=min(c,box(uv,vec2(.2,.09),vec2(.05,.06)));
+  c=min(c,box(uv,vec2(-.24,.08),vec2(.05,.05)));
+  c=min(c,box(uv,vec2(.03,.21),vec2(.022,.07)));
+  vec2 tp=uv-vec2(.03,.28);
+  c=min(c,max(abs(tp.x)*2.2+tp.y-.048,-tp.y));
+  vec2 r1=uv-vec2(-.14,.2); c=min(c,max(abs(r1.x)*.7+r1.y-.035,-r1.y));
+  vec2 r2=uv-vec2(.1,.19); c=min(c,max(abs(r2.x)*.6+r2.y-.036,-r2.y));
+  float sil=min(c,uv.y-hill);
+  float veil=smoothstep(.36,.72,fbm(vec2(uv.x*2.4-T*.035,uv.y*4.+T*.012))+.16*sin(T*.09));
+  col=mix(col,vec3(.085,.1,.125),smoothstep(aa,-aa,sil)*(1.-.88*veil));
+  // a few lit windows
+  float w=0.;
+  w+=smoothstep(.006,.002,box(uv,vec2(-.15,.15),vec2(.004,.006)))*(.6+.4*sin(T*1.3));
+  w+=smoothstep(.006,.002,box(uv,vec2(.03,.24),vec2(.004,.006)));
+  w+=smoothstep(.006,.002,box(uv,vec2(.09,.14),vec2(.004,.006)))*(.5+.5*sin(T*.7+2.));
+  w+=smoothstep(.006,.002,box(uv,vec2(-.04,.13),vec2(.004,.006)))*(.7+.3*sin(T*2.1+1.));
+  col+=vec3(1.,.74,.36)*w*(1.-veil)*.9;
+  // far snow
+  col+=vec3(.75,.8,.9)*(snow(uv,46.,.5,wind)*.35+snow(uv+3.,30.,.7,wind)*.45);
+  // snowfield
+  float fy=-.2+.03*sin(uv.x*2.+1.)+.012*n(vec2(uv.x*8.,3.));
+  vec3 field=mix(vec3(.2,.235,.29),vec3(.36,.4,.47),smoothstep(-.5,fy,uv.y));
+  col=mix(col,field,smoothstep(aa,-aa,uv.y-fy));
+  // village rooftops, scrolling as you walk
+  float xs=uv.x*4.5+T*.06;
+  float id=floor(xs); float fx=fract(xs)-.5;
+  float hh=.06+.07*hash(vec2(id,2.));
+  float wv=.3+.14*hash(vec2(id,5.));
+  float roof=-.36+hh+max(0.,wv-abs(fx))*.3;
+  float hm=step(abs(fx),wv)*smoothstep(aa,-aa,uv.y-roof);
+  vec3 hc=vec3(.03,.036,.046);
+  hc=mix(hc,vec3(.55,.6,.68),smoothstep(.02,.0,roof-uv.y)*step(abs(fx),wv));
+  float lw=step(.55,hash(vec2(id,9.)))*step(max(abs(fx-.08)-.035,abs(uv.y+.36-hh*.45)-.012),0.);
+  hc=mix(hc,vec3(1.,.72,.34),lw);
+  col=mix(col,hc,hm);
+  // near ground
+  float gy=-.37+.012*n(vec2(uv.x*5.+T*.08,7.));
+  col=mix(col,mix(vec3(.3,.34,.4),vec3(.5,.55,.62),smoothstep(-.5,gy,uv.y)),smoothstep(aa,-aa,uv.y-gy));
+  // near snow
+  col+=vec3(.85,.9,1.)*(snow(uv+7.,18.,1.,wind)*.6+snow(uv+11.,10.,1.4,wind)*.75+snow(uv+17.,5.5,1.9,wind)*.8);
+  col*=1.-.35*dot(uv,uv);
+  col+=(hash(gl_FragCoord.xy+fract(T)*33.)-.5)*.03;
+  gl_FragColor=vec4(max(col,0.),1.);
+}
+</script>
+
+<script>
+(function(){
+  "use strict";
+  var VS="attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
+  var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var playing=!reduce, scenes=[], clock=14, last=0;
+
+  function makeScene(id,extra){
+    var cv=document.getElementById(id), gl=null;
+    try{gl=cv.getContext("webgl",{antialias:false,alpha:false})||cv.getContext("experimental-webgl");}catch(e){}
+    if(!gl){cv.classList.add("nogl");return null;}
+    function sh(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+      if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(id,gl.getShaderInfoLog(s));return null;}return s;}
+    var v=sh(gl.VERTEX_SHADER,VS), f=sh(gl.FRAGMENT_SHADER,document.getElementById("fs-"+id).textContent);
+    if(!v||!f){cv.classList.add("nogl");return null;}
+    var pr=gl.createProgram();gl.attachShader(pr,v);gl.attachShader(pr,f);gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){console.error(id,gl.getProgramInfoLog(pr));cv.classList.add("nogl");return null;}
+    gl.useProgram(pr);
+    var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    var loc=gl.getAttribLocation(pr,"a");gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    var s={cv:cv,gl:gl,pr:pr,visible:true,ptr:null,m:[.5,.5],mt:[.5,.5],
+      u:function(n){return gl.getUniformLocation(pr,n);},extra:extra,dirty:true};
+    s.uR=s.u("R");s.uT=s.u("T");s.uM=s.u("M");
+    function pos(e){var r=cv.getBoundingClientRect();
+      s.mt=[(e.clientX-r.left)/r.width,1-(e.clientY-r.top)/r.height];s.ptr=s.mt.slice();s.dirty=true;}
+    cv.addEventListener("pointermove",pos);cv.addEventListener("pointerdown",pos);
+    cv.addEventListener("pointerleave",function(){s.ptr=null;s.mt=[.5,.5];});
+    scenes.push(s);return s;
+  }
+  function draw(s,t,dt){
+    var cv=s.cv,gl=s.gl,dpr=Math.min(window.devicePixelRatio||1,1.5);
+    var w=Math.max(2,Math.round(cv.clientWidth*dpr)),h=Math.max(2,Math.round(cv.clientHeight*dpr));
+    if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+    gl.viewport(0,0,w,h);
+    var k=Math.min(1,dt*4);
+    s.m[0]+=(s.mt[0]-s.m[0])*k;s.m[1]+=(s.mt[1]-s.m[1])*k;
+    gl.uniform2f(s.uR,w,h);gl.uniform1f(s.uT,t);gl.uniform2f(s.uM,s.m[0],s.m[1]);
+    if(s.extra)s.extra(s,t,dt,w/h);
+    gl.drawArrays(gl.TRIANGLES,0,3);s.dirty=false;
+  }
+
+  makeScene("corridor");
+  // beetle: wanders; runs from the pointer
+  var bug={x:-.2,y:0,a:.4,ph:0,tx:.3,ty:.1,next:0,bolt:0};
+  var bs=makeScene("beetle",function(s,t,dt,asp){
+    var bx=asp/2-.22,lo=-.26,hi=.36;
+    function clampT(){bug.tx=Math.max(-bx,Math.min(bx,bug.tx));bug.ty=Math.max(lo,Math.min(hi,bug.ty));}
+    function pick(){bug.tx=(Math.random()*2-1)*bx;bug.ty=lo+Math.random()*(hi-lo);bug.next=t+3+Math.random()*4;}
+    var speed=.11;
+    if(s.ptr&&t>bug.bolt){
+      var px=(s.ptr[0]-.5)*asp,py=s.ptr[1]-.5,dx=bug.x-px,dy=bug.y-py,d=Math.sqrt(dx*dx+dy*dy)||1e-3;
+      if(d<.42){bug.tx=bug.x+dx/d*.6;bug.ty=bug.y+dy/d*.6;clampT();speed=.6;bug.next=t+1.5;
+        if(Math.abs(bug.tx-bug.x)+Math.abs(bug.ty-bug.y)<.08){pick();bug.bolt=t+1.3;}}
+    }
+    if(t<bug.bolt)speed=.7;
+    if(t>bug.next)pick();
+    clampT();
+    var ex=bug.tx-bug.x,ey=bug.ty-bug.y,dist=Math.sqrt(ex*ex+ey*ey);
+    if(dist>.04){
+      var da=Math.atan2(ey,ex)-bug.a;da=Math.atan2(Math.sin(da),Math.cos(da));
+      var mx=6*dt;bug.a+=Math.max(-mx,Math.min(mx,da));
+      var v=speed*Math.max(0,Math.cos(da));
+      bug.x+=Math.cos(bug.a)*v*dt;bug.y+=Math.sin(bug.a)*v*dt;bug.ph+=v*dt*60;
+    }
+    s.gl.uniform2f(s.uP,bug.x,bug.y);s.gl.uniform1f(s.uA,bug.a);s.gl.uniform1f(s.uW,bug.ph);
+  });
+  if(bs){bs.uP=bs.u("P");bs.uA=bs.u("A");bs.uW=bs.u("W");}
+  makeScene("castle");
+
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){
+      scenes.forEach(function(s){if(s.cv===e.target){s.visible=e.isIntersecting;s.dirty=true;}});});},{rootMargin:"80px"});
+    scenes.forEach(function(s){io.observe(s.cv);});
+  }
+  window.addEventListener("resize",function(){scenes.forEach(function(s){s.dirty=true;});});
+
+  function frame(now){
+    var dt=Math.min(.05,(now-last)/1000||0);last=now;
+    if(playing)clock+=dt;
+    scenes.forEach(function(s){ if(s.visible&&(playing||s.dirty))draw(s,clock,playing?dt:.016); });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  var btn=document.getElementById("motion");
+  function label(){btn.textContent=playing?"Pause motion":"Play motion";}
+  label();
+  btn.addEventListener("click",function(){playing=!playing;label();});
+  if(!scenes.length)btn.hidden=true;
+
+  // register chart: one data set, drawn as SVG
+  var works=[
+    ["Der Verschollene","Amerika",1911,1927],
+    ["Das Urteil","The Judgment",1912,1913],
+    ["Die Verwandlung","The Metamorphosis",1912,1915],
+    ["Der Process","The Trial",1914,1925],
+    ["In der Strafkolonie","In the Penal Colony",1914,1919],
+    ["Ein Landarzt","A Country Doctor",1917,1920],
+    ["Ein Bericht für eine Akademie","A Report to an Academy",1917,1917],
+    ["Brief an den Vater","Letter to His Father",1919,1952],
+    ["Das Schloss","The Castle",1922,1926],
+    ["Ein Hungerkünstler","A Hunger Artist",1922,1922],
+    ["Der Bau","The Burrow",1923,1931],
+    ["Josefine, die Sängerin","Josephine the Singer",1924,1924]
+  ];
+  var Wd=1000,L=300,Rt=40,top=46,row=34,H=top+works.length*row+44,y0=1910,y1=1955;
+  function X(y){return L+(y-y0)/(y1-y0)*(Wd-L-Rt);}
+  var o='<svg viewBox="0 0 '+Wd+' '+H+'" role="img" aria-label="Each work drawn as a line from the year written to the year published, 1910 to 1955">';
+  for(var y=1910;y<=1950;y+=10){
+    o+='<line x1="'+X(y)+'" x2="'+X(y)+'" y1="'+(top-8)+'" y2="'+(H-36)+'" stroke="var(--ink)" stroke-opacity=".18"/>';
+    o+='<text class="num" x="'+X(y)+'" y="'+(H-14)+'" text-anchor="middle" font-size="15">'+y+'</text>';
+  }
+  var dx=X(1924.42);
+  o+='<line x1="'+dx+'" x2="'+dx+'" y1="'+(top-14)+'" y2="'+(H-36)+'" stroke="var(--stamp)" stroke-width="2" stroke-dasharray="5 5"/>';
+  o+='<text x="'+(dx+8)+'" y="'+(top-18)+'" font-size="15" fill="var(--stamp)" style="fill:var(--stamp)">3 June 1924: Kafka dies at Kierling</text>';
+  works.forEach(function(w,i){
+    var cy=top+i*row+row/2,post=w[3]>1924,c=post?"var(--stamp)":"var(--ink)",a=X(w[2]),b=X(w[3]);
+    o+='<text x="0" y="'+(cy-1)+'" font-size="16" font-weight="600">'+w[0]+'</text>';
+    o+='<text x="0" y="'+(cy+14)+'" font-size="13" font-style="italic" style="fill:var(--ink-soft)">'+w[1]+'</text>';
+    o+='<line x1="'+a+'" x2="'+b+'" y1="'+cy+'" y2="'+cy+'" stroke="'+c+'" stroke-width="5"/>';
+    o+='<circle cx="'+a+'" cy="'+cy+'" r="6" fill="var(--paper-deep)" stroke="'+c+'" stroke-width="3"/>';
+    o+='<circle cx="'+b+'" cy="'+cy+'" r="6.5" fill="'+c+'"/>';
+    o+='<text class="num" x="'+(b+12)+'" y="'+(cy+5)+'" font-size="14" style="fill:'+c+'">'+(w[2]===w[3]?w[3]:w[2]+" to "+w[3])+'</text>';
+  });
+  o+='</svg>';
+  document.getElementById("chart").innerHTML=o;
+})();
+</script>
+</body>
+</html>
